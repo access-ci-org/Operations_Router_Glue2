@@ -11,7 +11,7 @@
     "X509_CERT": "/soft/warehouse-apps-1.0/conf/cert.pem",
     "X509_KEY": "/soft/warehouse-apps-1.0/conf/key.pem",
     "LOG_FILE": "/soft/warehouse-apps-1.0/Manage-Glue2/var/route_glue2.log",
-    "LOG_LEVEL": "debug",
+    "LOG_LEVEL": "info",
     "RUN_DIR": "/soft/warehouse-apps-1.0/Manage-Glue2/var",
     "PID_FILE": "/soft/warehouse-apps-1.0/Manage-Glue2/var/route_glue2.pid"
 }

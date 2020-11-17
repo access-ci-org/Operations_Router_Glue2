@@ -6,12 +6,13 @@
 import amqp
 import argparse
 import base64
-import datetime
 from datetime import datetime
+import http.client as httplib
 import json
 import logging
 import logging.handlers
 import os
+from pid import PidFile
 import pwd
 import re
 import shutil
@@ -23,31 +24,20 @@ import sys
 from time import sleep
 import traceback
 
-try:
-    import http.client as httplib
-except ImportError:
-    import httplib
-
 import django
 django.setup()
 from django.conf import settings
 from glue2_provider.process import Glue2ProcessRawIPF, StatsSummary
 
-from daemon import runner
 import pdb
 
-class Route_Glue2():
-    def __init__(self):
-        self.args = None
-        self.config = {}
-        self.src = {}
-        self.altsrc = {}
-        self.dest = {}
-        for var in ['type', 'obj', 'host', 'port', 'display']:
-            self.src[var] = None
-            self.altsrc[var] = None
-            self.dest[var] = None
+# Used during initialization before loggin is enabled
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
+class Router():
+    def __init__(self):
+        # Parse arguments
         parser = argparse.ArgumentParser(epilog='File|Directory SRC|DEST syntax: {file|directory}:<file|directory path and name')
         parser.add_argument('daemonaction', nargs='?', choices=('start', 'stop', 'restart'), \
                             help='{start, stop, restart} daemon')
@@ -55,6 +45,8 @@ class Route_Glue2():
                             help='Messages source {amqp, file, directory} (default=amqp)')
         parser.add_argument('-d', '--destination', action='store', dest='dest', \
                             help='Message destination {print, directory, warehouse, or api} (default=print)')
+        parser.add_argument('--daemon', action='store_true', \
+                            help='Run as daemon redirecting stdout, stderr to a file, or interactive (default)')
         parser.add_argument('-l', '--log', action='store', \
                             help='Logging level (default=warning)')
         parser.add_argument('-c', '--config', action='store', default='./route_glue2.conf', \
@@ -64,14 +56,11 @@ class Route_Glue2():
                             help='AMQP queue default=glue2-router')
         parser.add_argument('--nobind', action='store_true', \
                             help='Do not bind to exchanges')
-        parser.add_argument('--verbose', action='store_true', \
-                            help='Verbose output')
-        parser.add_argument('--daemon', action='store_true', \
-                            help='Daemonize execution')
         parser.add_argument('--pdb', action='store_true', \
                             help='Run with Python debugger')
         self.args = parser.parse_args()
 
+        # Trace for debugging as early as possible
         if self.args.pdb:
             pdb.set_trace()
 
@@ -80,32 +69,55 @@ class Route_Glue2():
         try:
             with open(self.config_file, 'r') as file:
                 conf=file.read()
-                file.close()
         except IOError as e:
-            raise
+            eprint('Error "{}" reading config={}'.format(e, config_path))
+            sys.exit(1)
         try:
             self.config = json.loads(conf)
         except ValueError as e:
-            self.logger.error('Error "%s" parsing config=%s' % (e, self.config_file))
+            eprint('Error "{}" parsing config={}'.format(e, config_path))
             sys.exit(1)
 
-        # Initialize logging
-        numeric_log = None
-        if self.args.log is not None:
-            numeric_log = getattr(logging, self.args.log.upper(), None)
-        if numeric_log is None and 'LOG_LEVEL' in self.config:
-            numeric_log = getattr(logging, self.config['LOG_LEVEL'].upper(), None)
-        if numeric_log is None:
-            numeric_log = getattr(logging, 'INFO', None)
-        if not isinstance(numeric_log, int):
-            raise ValueError('Invalid log level: %s' % numeric_log)
-#        self.logger = logging.getLogger('DaemonLog')
-        self.logger = logging.getLogger('xsede.logger')
-        self.logger.setLevel(numeric_log)
-#       self.formatter = logging.Formatter(fmt='%(asctime)s %(message)s', datefmt='%Y/%m/%d %H:%M:%S')
-#       self.handler = logging.handlers.TimedRotatingFileHandler(self.config['LOG_FILE'], when='W6', backupCount=999, utc=True)
-#       self.handler.setFormatter(self.formatter)
-#       self.logger.addHandler(self.handler)
+        if self.config.get('PID_FILE'):
+            self.pidfile_path =  self.config['PID_FILE']
+        else:
+            name = os.path.basename(__file__).replace('.py', '')
+            self.pidfile_path = '/var/run/{}/{}.pid'.format(name, name)
+
+    def Setup(self):
+        # Initialize log level from arguments, or config file, or default to WARNING
+        loglevel_str = (self.args.log or self.config.get('LOG_LEVEL', 'WARNING')).upper()
+        loglevel_num = getattr(logging, loglevel_str, None)
+        self.logger = logging.getLogger('DaemonLog')
+        self.logger.setLevel(loglevel_num)
+        self.formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d %(levelname)s %(message)s', \
+                                           datefmt='%Y/%m/%d %H:%M:%S')
+        self.handler = logging.handlers.TimedRotatingFileHandler(self.config['LOG_FILE'], \
+            when='W6', backupCount=999, utc=True)
+        self.handler.setFormatter(self.formatter)
+        self.logger.addHandler(self.handler)
+
+        # Initialize stdout, stderr
+        if self.args.daemon and 'LOG_FILE' in self.config:
+            self.stdout_path = self.config['LOG_FILE'].replace('.log', '.daemon.log')
+            self.stderr_path = self.stdout_path
+            self.SaveDaemonStdOut(self.stdout_path)
+            sys.stdout = open(self.stdout_path, 'wt+')
+            sys.stderr = open(self.stderr_path, 'wt+')
+
+        signal.signal(signal.SIGINT, self.exit_signal)
+        signal.signal(signal.SIGTERM, self.exit_signal)
+
+        self.logger.info('Starting program=%s pid=%s, uid=%s(%s)' % \
+                     (os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
+
+        self.src = {}
+        self.altsrc = {}
+        self.dest = {}
+        for var in ['type', 'obj', 'host', 'port', 'display']:
+            self.src[var] = None
+            self.altsrc[var] = None
+            self.dest[var] = None
 
         # Verify arguments and parse compound arguments
         if 'src' not in self.args or not self.args.src: # Tests for None and empty ''
@@ -179,40 +191,34 @@ class Route_Glue2():
             if not os.access(self.dest['obj'], os.W_OK):
                 self.logger.error('Destination directory=%s not writable' % self.dest['obj'])
                 sys.exit(1)
-        if self.args.daemonaction:
-            self.stdin_path = '/dev/null'
-            if 'LOG_FILE' in self.config:
-                self.stdout_path = self.config['LOG_FILE'].replace('.log', '.daemon.log')
-                self.stderr_path = self.stdout_path
-            else:
-                self.stdout_path = '/dev/tty'
-                self.stderr_path = '/dev/tty'
-            self.SaveDaemonLog(self.stdout_path)
-            self.pidfile_timeout = 5
-            if 'PID_FILE' in self.config:
-                self.pidfile_path =  self.config['PID_FILE']
-            else:
-                name = os.path.basename(__file__).replace('.py', '')
-                self.pidfile_path =  '/var/run/%s/%s.pid' % (name ,name)
 
-    def SaveDaemonLog(self, path):
+        self.logger.info('Source: ' + self.src['display'])
+        self.logger.info('Destination: ' + self.dest['display'])
+        self.logger.info('Config: ' + self.config_file)
+
+    def SaveDaemonStdOut(self, path):
         # Save daemon log file using timestamp only if it has anything unexpected in it
         try:
-            with open(path, 'r') as file:
-                lines=file.read()
-                file.close()
-                if not re.match("^started with pid \d+$", lines) and not re.match("^$", lines):
-                    ts = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
-                    newpath = '%s.%s' % (path, ts)
-                    shutil.copy(path, newpath)
-                    print('SaveDaemonLog as ' + newpath)
+            file = open(path, 'r')
+            lines = file.read()
+            file.close()
+            if not re.match("^started with pid \d+$", lines) and not re.match("^$", lines):
+                ts = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
+                newpath = '{}.{}'.format(path, ts)
+                self.logger.debug('Saving previous daemon stdout to {}'.format(newpath))
+                shutil.copy(path, newpath)
         except Exception as e:
-            print('Exception in SaveDaemonLog({})'.format(path))
+            self.logger.error('Exception in SaveDaemonStdOut({})'.format(path))
         return
 
-    def exit_signal(self, signal, frame):
-        self.logger.error('Caught signal={}, exiting...'.format(signal))
-        sys.exit(0)
+    def exit_signal(self, signum, frame):
+        self.logger.critical('Caught signal={}({}), exiting with rc={}'.format(signum, signal.Signals(signum).name, signum))
+        sys.exit(signum)
+
+    def exit(self, rc):
+        if rc:
+            self.logger.error('Exiting with rc={}'.format(rc))
+        sys.exit(rc)
 
     def ConnectAmqp_UserPass(self):
         ssl_opts = {'ca_certs': os.environ.get('X509_USER_CERT'), 'ssl_version': ssl.PROTOCOL_TLSv1_2 }
@@ -454,16 +460,7 @@ class Route_Glue2():
         st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         self.channel.basic_consume(queue, callback=self.amqp_callback)
     
-    def run(self):
-        signal.signal(signal.SIGINT, self.exit_signal)
-        signal.signal(signal.SIGTERM, self.exit_signal)
-
-        self.logger.info('Starting program=%s pid=%s, uid=%s(%s)' % \
-                     (os.path.basename(__file__), os.getpid(), os.geteuid(), pwd.getpwuid(os.geteuid()).pw_name))
-        self.logger.info('Source: ' + self.src['display'])
-        self.logger.info('Destination: ' + self.dest['display'])
-        self.logger.info('Config: ' + self.config_file)
-
+    def Run(self):
         if self.src['type'] == 'amqp':
             self.amqp_consume_setup()
             while True:
@@ -507,15 +504,17 @@ class Route_Glue2():
                         if os.path.isfile(fullfile2):
                             self.process_file(fullfile2)
 
-if __name__ == '__main__':
-    router = Route_Glue2()
-    if router.args.daemonaction is None:
-        # Interactive execution
-        myrouter = router.run()
-        sys.exit(0)
+########## CUSTOMIZATIONS END ##########
 
-# Daemon execution
-    daemon_runner = runner.DaemonRunner(router)
-    daemon_runner.daemon_context.files_preserve=[router.logger.handlers[0].stream]
-    daemon_runner.daemon_context.working_directory=router.config['RUN_DIR']
-    daemon_runner.do_action()
+if __name__ == '__main__':
+    router = Router()
+    with PidFile(router.pidfile_path):
+        try:
+            router.Setup()
+            rc = router.Run()
+        except Exception as e:
+            msg = '{} Exception: {}'.format(type(e).__name__, e)
+            router.logger.error(msg)
+            traceback.print_exc(file=sys.stdout)
+            rc = 1
+    router.exit(rc)
