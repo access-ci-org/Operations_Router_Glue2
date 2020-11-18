@@ -1,4 +1,4 @@
-# XSEDE Information Services - Manage-Glue2
+# Manage-Glue2 Router for XSEDE Information Services
 
 Route glue2 messages, typically:
 * From the pub/sub service
