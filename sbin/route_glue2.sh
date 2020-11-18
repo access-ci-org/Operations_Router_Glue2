@@ -87,10 +87,6 @@ case "$1" in
         do_start
         ;;
 
-    status)
-        echo "Haven't implemented status"
-        ;;
-
     *)
         echo "Usage: ${APP_NAME} {start|stop|debug|restart} [<optional_parameters>]"
         exit 1
