@@ -16,7 +16,7 @@ APP_BASE=/soft/warehouse-apps-1.0/Manage-Glue2
 WAREHOUSE_BASE=/soft/warehouse-1.0
 # Override in shell environment
 if [ -z "$PYTHON_BASE" ]; then
-    PYTHON_BASE=/soft/python/python-3.7.6-base
+    PYTHON_BASE=/soft/python/python-3.7.7-base
 fi
 DAEMON_USER=software
 ####### Customizations END #######
