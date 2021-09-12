@@ -423,6 +423,9 @@ class Router():
         doctype = message.delivery_info['exchange']
         tag = message.delivery_tag
         resourceid = message.delivery_info['routing_key']
+        if resourceid == 'bridges.psc.xsede.org':
+            resourceid = 'bridges2-rm.psc.xsede.org'
+            self.logger.debug('Mapping bridges.psc.xsede.org to bridges2-rm')
         if self.dest['type'] == 'print':
             self.dest_print(st, doctype, resourceid, message.body)
         elif self.dest['type'] == 'directory':
