@@ -7,4 +7,4 @@ function main_function
    time psql warehouse glue2_owner -h information-warehouse-prod-cluster.cluster-clabf5kcvwmz.us-east-2.rds.amazonaws.com <bin/cleanup.sql
 }
 
-main_function 2>&1 | mail -r info-serv-admin@xsede.org -s "`hostname`: GLUE2 weekly cleanup" "info-serv-alert@xsede.org"
+main_function 2>&1 | mail -r ops-support-notify@access-ci.org -s "`hostname`: GLUE2 weekly cleanup" "ops-support-notify@access-ci.org"
