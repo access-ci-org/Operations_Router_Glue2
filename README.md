@@ -1,7 +1,6 @@
-# Manage-Glue2 Router for XSEDE Information Services
+# router-glue2 Router for ACCESS-CI Information Services
 
 Route glue2 messages, typically:
 * From the pub/sub service
 * To the Information Services warehouse
 
-Additional details at [https://info.xsede.org/info/](https://info.xsede.org/info/).

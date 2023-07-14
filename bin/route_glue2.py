@@ -124,7 +124,7 @@ class Router():
             if 'SOURCE' in self.config:
                 self.args.src = self.config['SOURCE']
         if 'src' not in self.args or not self.args.src:
-            self.args.src = 'amqp:infopub.xsede.org:5671'
+            self.args.src = 'amqp:opspub.access-ci.org:5671'
         idx = self.args.src.find(':')
         if idx > 0:
             (self.src['type'], self.src['obj']) = (self.args.src[0:idx], self.args.src[idx+1:])
@@ -225,7 +225,7 @@ class Router():
         try:
             host = '%s:%s' % (self.src['host'], self.src['port'])
             self.logger.info('AMQP connecting to host={} as userid={}'.format(host, self.config['AMQP_USERID']))
-            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='xsede',
+            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='infopub',
                                userid=self.config['AMQP_USERID'], password=self.config['AMQP_PASSWORD'],
                                heartbeat=120,
                                ssl=ssl_opts)
@@ -261,7 +261,7 @@ class Router():
         try:
             host = '%s:%s' % (self.altsrc['host'], self.altsrc['port'])
             self.logger.info('AMQP connecting to host={} as userid={}'.format(host, self.config['AMQP_USERID']))
-            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='xsede',
+            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='infopub',
                                userid=self.config['AMQP_USERID'], password=self.config['AMQP_PASSWORD'],
                                heartbeat=120,
                                ssl=ssl_opts)
@@ -276,7 +276,7 @@ class Router():
         ssl_opts = {'ca_certs': self.config['X509_CACERTS'],
                    'keyfile': '/path/to/key.pem',
                    'certfile': '/path/to/cert.pem'}
-        return amqp.Connection(login_method='EXTERNAL', host='%s:%s' % (self.src['host'], self.src['port']), virtual_host='xsede',
+        return amqp.Connection(login_method='EXTERNAL', host='%s:%s' % (self.src['host'], self.src['port']), virtual_host='infopub',
     #                           heartbeat=2,
                                ssl=ssl_opts)
 

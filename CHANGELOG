@@ -1,3 +1,6 @@
+2.0.0 20230714 EBB
+  - Forked XSEDE router and modified for ACCESS
+
 tag-1.6-20230211 JP
   - Send notifications to ops-support-notify@access-ci.org
 
