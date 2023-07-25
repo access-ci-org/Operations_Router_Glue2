@@ -13,6 +13,8 @@
 ####### Customizations START #######
 APP_NAME=route_glue2
 APP_BASE=/soft/applications-2.0/router_glue2
+#WAREHOUSE_DJANGO=%WAREHOUSE_DJANGO%
+WAREHOUSE_DJANGO=/soft/warehouse-2.0/PROD/Operations_Warehouse_Django
 WAREHOUSE_BASE=/soft/applications-2.0
 # Override in shell environment
 if [ -z "$PYTHON_BASE" ]; then
@@ -37,7 +39,7 @@ PYTHON_BIN=python3
 export LD_LIBRARY_PATH=${PYTHON_BASE}/lib
 source ${APP_BASE}/python/bin/activate
 
-export PYTHONPATH=${APP_SOURCE}/lib:${WAREHOUSE_SOURCE}/django_xsede_warehouse
+export PYTHONPATH=${APP_SOURCE}/lib:${WAREHOUSE_SOURCE}/${WAREHOUSE_DJANGO}
 export DJANGO_CONF=${APP_BASE}/conf/django_xsede_warehouse.conf
 export APP_CONFIG=${APP_HOME}/conf/django_prod_router.conf
 export DJANGO_SETTINGS_MODULE=Operations_Warehouse_Django.settings
