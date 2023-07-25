@@ -27,7 +27,7 @@ import traceback
 import django
 django.setup()
 from django.conf import settings
-from glue2.process import Glue2ProcessRawIPF, StatsSummary
+from glue2.process import glue2_process_raw_ipf, StatsSummary
 
 import pdb
 
@@ -371,7 +371,7 @@ class Router():
             self.logger.error('API response not in expected format (%s)' % e)
 
     def dest_warehouse(self, ts, doctype, resourceid, message_body):
-        proc = Glue2ProcessRawIPF(application=os.path.basename(__file__), function='dest_warehouse')
+        proc = glue2_process_raw_ipf(application=os.path.basename(__file__), function='dest_warehouse')
         (code, message) = proc.process(ts, doctype, resourceid, message_body)
 #        if code is False:
 #            self.logger.error(message)
