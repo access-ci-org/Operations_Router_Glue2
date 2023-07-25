@@ -39,7 +39,8 @@ source ${APP_BASE}/python/bin/activate
 
 export PYTHONPATH=${APP_SOURCE}/lib:${WAREHOUSE_SOURCE}/django_xsede_warehouse
 export DJANGO_CONF=${APP_BASE}/conf/django_xsede_warehouse.conf
-export DJANGO_SETTINGS_MODULE=xsede_warehouse.settings
+export APP_CONFIG=${APP_HOME}/conf/django_prod_router.conf
+export DJANGO_SETTINGS_MODULE=Operations_Warehouse_Django.settings
 
 do_start () {
     echo -n "Starting ${APP_NAME}:"

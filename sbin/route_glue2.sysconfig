@@ -10,4 +10,5 @@ PYTHON_BIN=python3
 PYTHONPATH=/soft/applications-2.0/router_glue2/PROD/lib:/soft/warehouse-1.0/PROD/django_xsede_warehouse
 
 DJANGO_CONF=/soft/applications-2.0/router_glue2/conf/django_prod_router.conf
+APP_CONFIG=/soft/applications-2.0/router_glue2/conf/django_prod_router.conf
 DJANGO_SETTINGS_MODULE=Operations_Warehouse_Django.settings
