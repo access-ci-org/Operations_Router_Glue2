@@ -12,7 +12,7 @@
 
 ####### Customizations START #######
 APP_NAME=route_glue2
-APP_BASE=/soft/applications-2.0/router-glue2
+APP_BASE=/soft/applications-2.0/router_glue2
 WAREHOUSE_BASE=/soft/applications-2.0
 # Override in shell environment
 if [ -z "$PYTHON_BASE" ]; then
