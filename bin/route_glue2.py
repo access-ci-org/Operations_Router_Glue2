@@ -27,7 +27,7 @@ import traceback
 import django
 django.setup()
 from django.conf import settings
-from glue2_provider.process import Glue2ProcessRawIPF, StatsSummary
+from glue2.process import Glue2ProcessRawIPF, StatsSummary
 
 import pdb
 
