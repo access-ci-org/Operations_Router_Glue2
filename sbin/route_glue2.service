@@ -4,8 +4,8 @@ After=network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=simple
-EnvironmentFile=/soft/warehouse-apps-1.0/router-glue2/PROD/sbin/route_glue2.sysconfig
-ExecStart=/soft/warehouse-apps-1.0/router-glue2/PROD/sbin/route_glue2.service.sh start
+EnvironmentFile=/soft/applications-2.0/router-glue2/PROD/sbin/route_glue2.sysconfig
+ExecStart=/soft/applications-2.0/router-glue2/PROD/sbin/route_glue2.service.sh start
 User=software
 Group=admin
 Restart=always
