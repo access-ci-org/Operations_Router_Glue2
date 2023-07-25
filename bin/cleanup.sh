@@ -3,7 +3,7 @@
 
 function main_function
 {
-   cd /soft/warehouse-apps-2.0/router_glue2/PROD/
+   cd /soft/applications-2.0/router_glue2/PROD/
    time psql warehouse glue2_owner -h opsdb-dev.cluster-clabf5kcvwmz.us-east-2.rds.amazonaws.com <bin/cleanup.sql
 }
 
