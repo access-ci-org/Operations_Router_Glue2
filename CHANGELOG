@@ -1,4 +1,7 @@
-2.0.0 20230714 EBB
+v2.0.1 2023-10-29 JP
+  - Update README.md, CHANGELOG, and sbin/* to match naming and formatting in other routers, no significant code changes
+
+v2.0.0 2023-07-14 EBB
   - Forked XSEDE router and modified for ACCESS
 
 tag-1.6-20230211 JP

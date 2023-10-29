@@ -39,8 +39,6 @@ class Router():
     def __init__(self):
         # Parse arguments
         parser = argparse.ArgumentParser(epilog='File|Directory SRC|DEST syntax: {file|directory}:<file|directory path and name')
-        parser.add_argument('daemonaction', nargs='?', choices=('start', 'stop', 'restart'), \
-                            help='{start, stop, restart} daemon')
         parser.add_argument('-s', '--source', action='store', dest='src', \
                             help='Messages source {amqp, file, directory} (default=amqp)')
         parser.add_argument('-d', '--destination', action='store', dest='dest', \
@@ -49,8 +47,8 @@ class Router():
                             help='Run as daemon redirecting stdout, stderr to a file, or interactive (default)')
         parser.add_argument('-l', '--log', action='store', \
                             help='Logging level (default=warning)')
-        parser.add_argument('-c', '--config', action='store', default='./route_glue2.conf', \
-                            help='Configuration file default=./route_glue2.conf')
+        parser.add_argument('-c', '--config', action='store', default='./router_glue2.conf', \
+                            help='Configuration file default=./router_glue2.conf')
         # Don't set the default so that we can apply the precedence argument || config || default
         parser.add_argument('-q', '--queue', action='store', \
                             help='AMQP queue default=glue2-router')

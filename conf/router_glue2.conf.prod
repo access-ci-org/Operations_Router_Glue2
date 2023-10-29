@@ -10,8 +10,8 @@
     "X509_CACERTS": "/path/to/pem/",
     "X509_CERT": "/soft/applications-2.0/conf/cert.pem",
     "X509_KEY": "/soft/applications-2.0/conf/key.pem",
-    "LOG_FILE": "/soft/applications-2.0/router_glue2/var/route_glue2.log",
+    "LOG_FILE": "/soft/applications-2.0/router_glue2/var/router_glue2.log",
     "LOG_LEVEL": "info",
     "RUN_DIR": "/soft/applications-2.0/router_glue2/var",
-    "PID_FILE": "/soft/applications-2.0/router_glue2/var/route_glue2.pid"
+    "PID_FILE": "/soft/applications-2.0/router_glue2/var/router_glue2.pid"
 }
