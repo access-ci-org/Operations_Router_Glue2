@@ -1,3 +1,6 @@
+v2.1.0 2023-11-10 JP
+  - Ansible is now deploying crontabs, disable one, and deploy one but don't have it do anything for now
+
 v2.0.1 2023-10-29 JP
   - Update README.md, CHANGELOG, and sbin/* to match naming and formatting in other routers, no significant code changes
 
