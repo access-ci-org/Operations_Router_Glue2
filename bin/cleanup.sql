@@ -95,4 +95,4 @@ delete from public.glue2_entityhistory
     where "DocumentType"='glue2.compute' and "ReceivedTime" < current_timestamp - interval '7 days';
 delete from public.glue2_entityhistory
     where "DocumentType"='glue2.applications' and "ReceivedTime" < current_timestamp - interval '7 days';
-vacuum analyze public.monitoring_db_testresult;
+vacuum analyze public.glue2_entityhistory;

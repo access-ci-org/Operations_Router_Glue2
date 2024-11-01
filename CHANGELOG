@@ -1,3 +1,6 @@
+v2.2.5 2024-11-01 JP
+  - Log start/finish time, fix table name
+
 v2.2.4 2024-11-01 JP
   - Fix glue2 table names
 
