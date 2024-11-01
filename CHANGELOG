@@ -1,3 +1,6 @@
+v2.2.3 2024-11-01 JP
+  - Disable sbin/cleanup.sh email, fix DB_HOSTNAME
+
 v2.2.2 2024-11-01 JP
   - Fix sbin/cleanup.sh path in crontab
 
