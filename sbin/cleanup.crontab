@@ -1,1 +1,1 @@
-00 6 * * * /bin/bash -l -c "%APP_HOME%/PROD/bin/cleanup.sh"
+00 6 * * * /bin/bash -l -c "%APP_HOME%/bin/cleanup.sh"

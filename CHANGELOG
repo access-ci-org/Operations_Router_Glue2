@@ -1,3 +1,6 @@
+v2.2.1 2024-11-01 JP
+  - Move cleanup.sh to sbin/ so that it's installed, fix crontab to use sbin/cleanup.sh, tee output to cleanup.log
+
 v2.2.0 2024-11-01 JP
   - Update cleanup.sql with public schema name and better manage entityhistory
 
