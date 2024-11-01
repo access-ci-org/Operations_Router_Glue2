@@ -1,3 +1,6 @@
+v2.2.2 2024-11-01 JP
+  - Fix sbin/cleanup.sh path in crontab
+
 v2.2.1 2024-11-01 JP
   - Move cleanup.sh to sbin/ so that it's installed, fix crontab to use sbin/cleanup.sh, tee output to cleanup.log
 
