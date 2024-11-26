@@ -1,3 +1,6 @@
+v2.2.6 2024-11-26 JP
+  - Fix cleanup.sh to cd to APP_HOME sooner, add opsapi2 to cache ping 
+
 v2.2.5 2024-11-01 JP
   - Log start/finish time, fix table name
 
