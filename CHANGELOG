@@ -1,3 +1,6 @@
+v2.3.0 2025-05-05 JP
+  - Switch schema from public to info_django
+
 v2.2.6 2024-11-26 JP
   - Fix cleanup.sh to cd to APP_HOME sooner, add opsapi2 to cache ping 
 
