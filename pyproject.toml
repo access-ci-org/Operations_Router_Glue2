@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "operations-router-glue2"
+version = "0.0.0"
+description = "ACCESS Operations Information Sharing Platform - GLUE2 Router"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+rabbitmq-amqp-python-client = "*"
+django = "==5.0.*"
+djangorestframework = "*"
+django-markup = "*"
+django-opensearch-dsl = "==0.5.*"
+pid = "*"
+docutils = "*"
+psycopg2-binary = "*"
+pytz = "*"
+requests = "*"
+
+[tool.poetry.group.dev.dependencies]

@@ -3,7 +3,6 @@
 # Route GLUE2 messages
 #   from a source (amqp, file, directory)
 #   to a destination (print, directory, warehouse, api)
-import amqp
 import argparse
 import base64
 from datetime import datetime
@@ -23,6 +22,17 @@ from ssl import _create_unverified_context
 import sys
 from time import sleep
 import traceback
+from urllib.parse import quote
+
+from rabbitmq_amqp_python_client import (
+    AMQPMessagingHandler,
+    AmqpUri,
+    ClassicQueueSpecification,
+    ConsumerOptions,
+    Environment,
+    ExchangeToQueueBindingSpecification,
+    PosixSslConfigurationContext,
+)
 
 import django
 django.setup()
@@ -30,6 +40,20 @@ from django.conf import settings
 from glue2.process import glue2_process_raw_ipf, StatsSummary
 
 import pdb
+
+class RouterAmqpMessageHandler(AMQPMessagingHandler):
+    def __init__(self, router):
+        super().__init__(auto_accept=False, auto_settle=True)
+        self.router = router
+
+    def on_amqp_message(self, event):
+        try:
+            self.router.amqp_callback(event)
+            self.delivery_context.accept(event)
+        except Exception:
+            self.router.logger.exception('AMQP message processing error')
+            self.delivery_context.requeue(event)
+            raise
 
 # Used during initialization before loggin is enabled
 def eprint(*args, **kwargs):
@@ -200,7 +224,7 @@ class Router():
             file = open(path, 'r')
             lines = file.read()
             file.close()
-            if not re.match("^started with pid \d+$", lines) and not re.match("^$", lines):
+            if not re.match(r"^started with pid \d+$", lines) and not re.match("^$", lines):
                 ts = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
                 newpath = '{}.{}'.format(path, ts)
                 self.logger.debug('Saving previous daemon stdout to {}'.format(newpath))
@@ -218,17 +242,27 @@ class Router():
             self.logger.error('Exiting with rc={}'.format(rc))
         sys.exit(rc)
 
+    def BuildAmqpUri(self, host, port):
+        schema = 'amqps' if str(port) == '5671' else 'amqp'
+        return AmqpUri(schema=schema, host=host, port=int(port),
+                       user=self.config['AMQP_USERID'], password=self.config['AMQP_PASSWORD'],
+                       vhost='infopub')
+
+    def BuildAmqpSslContext(self):
+        ca_cert = os.environ.get('X509_USER_CERT') or self.config.get('X509_CACERTS')
+        if ca_cert:
+            return PosixSslConfigurationContext(ca_cert=ca_cert)
+        return None
+
     def ConnectAmqp_UserPass(self):
-        ssl_opts = {'ca_certs': os.environ.get('X509_USER_CERT'), 'ssl_version': ssl.PROTOCOL_TLSv1_2 }
         try:
             host = '%s:%s' % (self.src['host'], self.src['port'])
             self.logger.info('AMQP connecting to host={} as userid={}'.format(host, self.config['AMQP_USERID']))
-            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='infopub',
-                               userid=self.config['AMQP_USERID'], password=self.config['AMQP_PASSWORD'],
-                               heartbeat=120,
-                               ssl=ssl_opts)
-            conn.connect()
-            return conn
+            env = Environment(amqp_uri=self.BuildAmqpUri(self.src['host'], self.src['port']),
+                              ssl_context=self.BuildAmqpSslContext())
+            conn = env.connection()
+            conn.dial()
+            return (env, conn)
         except Exception as err:
             self.logger.error('AMQP connect to primary error: ' + format(err))
 
@@ -259,24 +293,18 @@ class Router():
         try:
             host = '%s:%s' % (self.altsrc['host'], self.altsrc['port'])
             self.logger.info('AMQP connecting to host={} as userid={}'.format(host, self.config['AMQP_USERID']))
-            conn = amqp.Connection(login_method='AMQPLAIN', host=host, virtual_host='infopub',
-                               userid=self.config['AMQP_USERID'], password=self.config['AMQP_PASSWORD'],
-                               heartbeat=120,
-                               ssl=ssl_opts)
-            conn.connect()
-            return conn
+            env = Environment(amqp_uri=self.BuildAmqpUri(self.altsrc['host'], self.altsrc['port']),
+                              ssl_context=self.BuildAmqpSslContext())
+            conn = env.connection()
+            conn.dial()
+            return (env, conn)
         except Exception as err:
             self.logger.error('AMQP connect to alternate error: ' + format(err))
             self.logger.error('Quitting...')
             sys.exit(1)
 
     def ConnectAmqp_X509(self):
-        ssl_opts = {'ca_certs': self.config['X509_CACERTS'],
-                   'keyfile': '/path/to/key.pem',
-                   'certfile': '/path/to/cert.pem'}
-        return amqp.Connection(login_method='EXTERNAL', host='%s:%s' % (self.src['host'], self.src['port']), virtual_host='infopub',
-    #                           heartbeat=2,
-                               ssl=ssl_opts)
+        raise NotImplementedError('AMQP 1.0 X.509 authentication is not configured for this router')
 
     def src_amqp(self):
         return
@@ -418,21 +446,28 @@ class Router():
     
     def amqp_callback(self, message):
         st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-        doctype = message.delivery_info['exchange']
-        tag = message.delivery_tag
-        resourceid = message.delivery_info['routing_key']
+        annotations = message.message.annotations or {}
+        doctype = annotations.get('x-exchange')
+        resourceid = annotations.get('x-routing-key')
+        if not doctype or not resourceid:
+            self.logger.error('AMQP message missing x-exchange or x-routing-key annotations')
+            return
+        message_body = message.message.body
+        if message_body is None:
+            message_body = ''
+        if isinstance(message_body, bytes):
+            message_body = message_body.decode('utf-8')
         if resourceid == 'bridges.psc.xsede.org':
             resourceid = 'bridges2-rm.psc.xsede.org'
             self.logger.debug('Mapping bridges.psc.xsede.org to bridges2-rm')
         if self.dest['type'] == 'print':
-            self.dest_print(st, doctype, resourceid, message.body)
+            self.dest_print(st, doctype, resourceid, message_body)
         elif self.dest['type'] == 'directory':
-            self.dest_directory(st, doctype, resourceid, message.body)
+            self.dest_directory(st, doctype, resourceid, message_body)
         elif self.dest['type'] == 'warehouse':
-            self.dest_warehouse(st, doctype, resourceid, message.body)
+            self.dest_warehouse(st, doctype, resourceid, message_body)
         elif self.dest['type'] == 'api':
-            self.dest_restapi(st, doctype, resourceid, message.body)
-        self.channel.basic_ack(delivery_tag=tag)
+            self.dest_restapi(st, doctype, resourceid, message_body)
 
     # Where we process
     def amqp_consume_setup(self):
@@ -447,39 +482,39 @@ class Router():
             pass
         self.amqp_consume_setup_last = now
 
-        self.conn = self.ConnectAmqp_UserPass()
-        self.channel = self.conn.channel()
-        self.channel.basic_qos(prefetch_size=0, prefetch_count=4, a_global=True)
+        (self.env, self.conn) = self.ConnectAmqp_UserPass()
         which_queue = self.args.queue or self.config.get('QUEUE', 'glue2-router')
-        declare_ok = self.channel.queue_declare(queue=which_queue, durable=True, auto_delete=False)
-        queue = declare_ok.queue
+        management = self.conn.management()
+        management.declare_queue(ClassicQueueSpecification(name=which_queue, is_durable=True, is_auto_delete=False))
         if not self.args.nobind:
             exchanges = ['glue2.applications', 'glue2.compute', 'glue2.computing_activities', 'glue2.computing_activity']
             for ex in exchanges:
-                self.channel.queue_bind(queue, ex, '#')
+                management.bind(ExchangeToQueueBindingSpecification(source_exchange=ex,
+                                                                    destination_queue=which_queue,
+                                                                    binding_key='#'))
             self.logger.info('AMQP Queue={}, Exchanges=({})'.format(which_queue, ', '.join(exchanges)))
-        st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-        self.channel.basic_consume(queue, callback=self.amqp_callback)
+        self.amqp_handler = RouterAmqpMessageHandler(self)
+        self.consumer = self.conn.consumer(destination='/queues/' + quote(which_queue, safe=''),
+                                          message_handler=self.amqp_handler,
+                                          consumer_options=ConsumerOptions(),
+                                          credit=4)
     
     def Run(self):
         if self.src['type'] == 'amqp':
             self.amqp_consume_setup()
             while True:
                 try:
-                    self.conn.drain_events()
-                    self.conn.heartbeat_tick(rate=2)
-                    continue # Loops back to the while
-                except (socket.timeout):
-                    self.logger.info('AMQP drain_events timeout, sending heartbeat')
-                    self.conn.heartbeat_tick(rate=2)
-                    sleep(5)
-                    continue
+                    self.consumer.run()
                 except Exception as err:
-                    self.logger.error('AMQP drain_events error: ' + format(err))
+                    self.logger.error('AMQP consume error: ' + format(err))
                 try:
                     self.conn.close()
                 except Exception as err:
                     self.logger.error('AMQP connection.close error: ' + format(err))
+                try:
+                    self.env.close()
+                except Exception as err:
+                    self.logger.error('AMQP environment.close error: ' + format(err))
                 sleep(30)   # Sleep a little and then try to reconnect
                 self.amqp_consume_setup()
 

@@ -1,3 +1,6 @@
+v2.4.? 2026-07-xx JP
+  - Switch from amqp library to rabbitmq-amqp-python-client
+
 v2.3.0 2025-05-05 JP
   - Switch schema from public to info_django
 

@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+rabbitmq-amqp-python-client = "*"
+django = "==5.0.*"
+djangorestframework = "*"
+django-markup = "*"
+django-opensearch-dsl = "==0.5.*"
+pid = "*"
+docutils = "*"
+#psycopg2 = "==2.9.*"
+psycopg2-binary = "*"
+pytz = "*"
+requests = "*"
+
+[requires]
+python_version = "3.12"
