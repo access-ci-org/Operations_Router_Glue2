@@ -1,3 +1,7 @@
+v2.4.1 2025-07-17 JP
+  - Fix add drain_events timeout to try to fix dead connections due to missing heartbeats
+  - Several sbin/router_glue2* fixes
+
 v2.4.0 2025-07-17 JP
   - Python 3.12 compatibility: re.match strings must be regex's using r"
   - Python 3.12 compatibility: datetime.utcnow() -> datetime.now(timezone.utc)

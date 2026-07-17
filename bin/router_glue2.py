@@ -458,7 +458,7 @@ class Router():
             for ex in exchanges:
                 self.channel.queue_bind(queue, ex, '#')
             self.logger.info('AMQP Queue={}, Exchanges=({})'.format(which_queue, ', '.join(exchanges)))
-        st = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         self.channel.basic_consume(queue, callback=self.amqp_callback)
     
     def Run(self):
@@ -466,12 +466,12 @@ class Router():
             self.amqp_consume_setup()
             while True:
                 try:
-                    self.conn.drain_events()
-                    self.conn.heartbeat_tick(rate=2)
+                    self.conn.drain_events(timeout=20)
+                    self.conn.heartbeat_tick(rate=3)
                     continue # Loops back to the while
                 except (socket.timeout):
-                    self.logger.info('AMQP drain_events timeout, sending heartbeat')
-                    self.conn.heartbeat_tick(rate=2)
+                    self.logger.debug('AMQP drain_events timeout, sending heartbeat')
+                    self.conn.heartbeat_tick(rate=3)
                     sleep(5)
                     continue
                 except Exception as err:

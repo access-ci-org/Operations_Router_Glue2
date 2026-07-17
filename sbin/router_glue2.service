@@ -5,7 +5,7 @@ After=network.target remote-fs.target nss-lookup.target
 [Service]
 Type=simple
 EnvironmentFile=%APP_HOME%/sbin/%APP_NAME%.sysconfig
-ExecStart=%APP_HOME%/sbin/%APP_NAME%.service.sh start
+ExecStart=%APP_HOME%/sbin/%APP_NAME%.service.sh
 User=software
 Group=admin
 Restart=always
