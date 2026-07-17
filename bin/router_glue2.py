@@ -6,7 +6,7 @@
 import amqp
 import argparse
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 import http.client as httplib
 import json
 import logging
@@ -200,7 +200,7 @@ class Router():
             file = open(path, 'r')
             lines = file.read()
             file.close()
-            if not re.match("^started with pid \d+$", lines) and not re.match("^$", lines):
+            if not re.match(r"^started with pid \d+$", lines) and not re.match(r"^$", lines):
                 ts = datetime.strftime(datetime.now(), '%Y-%m-%d_%H:%M:%S')
                 newpath = '{}.{}'.format(path, ts)
                 self.logger.debug('Saving previous daemon stdout to {}'.format(newpath))
@@ -417,7 +417,7 @@ class Router():
             self.logger.error('Processing file with unrecognized destination: ' + self.dest['type'])
     
     def amqp_callback(self, message):
-        st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        st = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         doctype = message.delivery_info['exchange']
         tag = message.delivery_tag
         resourceid = message.delivery_info['routing_key']
@@ -436,7 +436,7 @@ class Router():
 
     # Where we process
     def amqp_consume_setup(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         try:
             if (now - self.amqp_consume_setup_last).seconds < 300:  # 5 minutes
                 self.logger.error('Too recent amqp_consume_setup, quitting...')
@@ -458,7 +458,7 @@ class Router():
             for ex in exchanges:
                 self.channel.queue_bind(queue, ex, '#')
             self.logger.info('AMQP Queue={}, Exchanges=({})'.format(which_queue, ', '.join(exchanges)))
-        st = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        st = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         self.channel.basic_consume(queue, callback=self.amqp_callback)
     
     def Run(self):

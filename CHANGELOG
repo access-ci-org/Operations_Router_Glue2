@@ -1,3 +1,9 @@
+v2.4.0 2025-07-17 JP
+  - Python 3.12 compatibility: re.match strings must be regex's using r"
+  - Python 3.12 compatibility: datetime.utcnow() -> datetime.now(timezone.utc)
+  - New uv pyproject.toml
+  - Convert sbin/*.sh scripts to use uv
+
 v2.3.0 2025-05-05 JP
   - Switch schema from public to info_django
 
