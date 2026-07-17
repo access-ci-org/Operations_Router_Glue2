@@ -1,3 +1,6 @@
+v2.4.2 2025-07-17 JP
+  - Fix router_glue2.sysconfig APP_HOME variable
+
 v2.4.1 2025-07-17 JP
   - Fix add drain_events timeout to try to fix dead connections due to missing heartbeats
   - Several sbin/router_glue2* fixes
